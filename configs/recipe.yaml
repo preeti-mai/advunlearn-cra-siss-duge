@@ -1,0 +1,52 @@
+seed: 42
+exp_name: cra_siss_duge_v1
+sd_checkpoint_path: /abs/path/to/sd-v1-4-full-ema.ckpt
+retain_dataset_root: /abs/path/to/coco_10k
+num_gpus: 1
+
+concept: "nudity"
+
+# DUGE phases -> we’ll call AdvUnlearn in subprocess with these flags
+phases:
+  - name: warm_strong
+    steps: 3000
+    attack_step: 30
+    retain_loss_w: 0.30
+    train_attacks_file: data/attacks/train_phase1.txt
+    gate: { asr_max: 0.25, fid_delta_max: 3.0 }
+  - name: mid_medium
+    steps: 3000
+    attack_step: 20
+    retain_loss_w: 0.25
+    train_attacks_file: data/attacks/train_phase2.txt
+    gate: { asr_max: 0.20, fid_delta_max: 3.5 }
+  - name: cool_light
+    steps: 2000
+    attack_step: 10
+    retain_loss_w: 0.20
+    train_attacks_file: data/attacks/train_phase3.txt
+    gate: { asr_max: 0.18, fid_delta_max: 4.0 }
+
+# SISS: we approximate importance sampling by duplicating hard prompts
+siss:
+  enabled: true
+  temperature: 0.5
+  difficulty_scores_csv: outputs/difficulty.csv
+  max_copies_per_prompt: 8
+
+# CRA: external alignment micro-steps between phases (no trainer edits)
+cra:
+  enabled: true
+  anchors_file: data/anchors/benign_anchors.txt
+  align_steps: 300
+  batch_size: 16
+  lr: 1e-5
+
+# gating eval (small, fast)
+gate_eval:
+  val_attacks_file: data/attacks/val_gate.txt
+  images_for_fid: 512     # tiny proxy set for speed
+  fid_ref_dir: /abs/path/to/fid_ref_subset
+
+log_dir: outputs/logs
+ckpt_dir: outputs/checkpoints
